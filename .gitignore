@@ -1,7 +1,6 @@
 .python-version
 .venv
 .venv_policy_test
-.env
 .newenv
 newenv/*
 litellm/proxy/myenv/*
@@ -107,3 +106,4 @@ LAZY_LOADING_IMPROVEMENTS.md
 **/playwright-report
 **/*.storageState.json
 **/coverage
+config.bat

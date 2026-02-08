@@ -603,12 +603,38 @@ class LiteLLMCompletionResponsesConfig:
         return None
 
     @staticmethod
+    def _tool_use_to_dict(tool_use_definition: Any) -> Dict[str, Any]:
+        """Convert a tool use definition (dict or ChatCompletionMessageToolCall) to a plain dict.
+
+        The TOOL_CALLS_CACHE stores ChatCompletionMessageToolCall Pydantic-like objects,
+        but downstream code expects plain dicts. This method normalizes both types to a
+        plain dict with 'id', 'type', and 'function' (containing 'name' and 'arguments').
+        """
+        if isinstance(tool_use_definition, dict):
+            return tool_use_definition
+        # Handle ChatCompletionMessageToolCall or any object with .get() support
+        function = tool_use_definition.get("function") or {}
+        if not isinstance(function, dict):
+            function = {
+                "name": function.get("name", "") or "",
+                "arguments": str(function.get("arguments", "{}") or "{}"),
+            }
+        return {
+            "id": tool_use_definition.get("id") or "",
+            "type": tool_use_definition.get("type") or "function",
+            "function": function,
+        }
+
+    @staticmethod
     def _create_tool_call_chunk(
         tool_use_definition: Dict[str, Any], tool_call_id: str, index: int
     ) -> ChatCompletionToolCallChunk:
         """Create a ChatCompletionToolCallChunk from tool_use_definition."""
         function_raw = tool_use_definition.get("function")
-        function: Dict[str, Any] = function_raw if isinstance(function_raw, dict) else {}
+        function: Dict[str, Any] = function_raw if isinstance(function_raw, dict) else (
+            {"name": function_raw.get("name", ""), "arguments": str(function_raw.get("arguments", "{}"))}
+            if function_raw is not None and hasattr(function_raw, "get") else {}
+        )
         tool_use_id_raw = tool_use_definition.get("id")
         tool_use_id: str = (
             str(tool_use_id_raw) if tool_use_id_raw is not None else str(tool_call_id)
@@ -743,7 +769,7 @@ class LiteLLMCompletionResponsesConfig:
                     
                     if _tool_use_definition:
                         if not isinstance(_tool_use_definition, dict):
-                            _tool_use_definition = {}
+                            _tool_use_definition = LiteLLMCompletionResponsesConfig._tool_use_to_dict(_tool_use_definition)
                         tool_call_chunk = (
                             LiteLLMCompletionResponsesConfig._create_tool_call_chunk(
                                 _tool_use_definition, tool_call_id, len(tool_calls)

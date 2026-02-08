@@ -1,7 +1,6 @@
 .python-version
 .venv
 .venv_policy_test
-.env
 .newenv
 newenv/*
 litellm/proxy/myenv/*
@@ -100,3 +99,4 @@ STABILIZATION_TODO.md
 **/playwright-report
 **/*.storageState.json
 **/coverage
+config.bat

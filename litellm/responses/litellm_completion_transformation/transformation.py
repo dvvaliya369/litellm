@@ -742,16 +742,28 @@ class LiteLLMCompletionResponsesConfig:
                         )
                     
                     if _tool_use_definition:
+                        # Convert Pydantic object to dict if needed
+                        # TOOL_CALLS_CACHE stores ChatCompletionMessageToolCall (Pydantic) objects
+                        # but we need dict format for _create_tool_call_chunk
                         if not isinstance(_tool_use_definition, dict):
-                            _tool_use_definition = {}
-                        tool_call_chunk = (
-                            LiteLLMCompletionResponsesConfig._create_tool_call_chunk(
-                                _tool_use_definition, tool_call_id, len(tool_calls)
+                            # Try model_dump() first (Pydantic v2), fall back to dict() (Pydantic v1)
+                            if hasattr(_tool_use_definition, 'model_dump'):
+                                _tool_use_definition = _tool_use_definition.model_dump()
+                            elif hasattr(_tool_use_definition, 'dict'):
+                                _tool_use_definition = _tool_use_definition.dict()
+                            else:
+                                # Last resort: if it's not a Pydantic object and not a dict, skip it
+                                _tool_use_definition = None
+                        
+                        if _tool_use_definition:
+                            tool_call_chunk = (
+                                LiteLLMCompletionResponsesConfig._create_tool_call_chunk(
+                                    _tool_use_definition, tool_call_id, len(tool_calls)
+                                )
                             )
-                        )
-                        LiteLLMCompletionResponsesConfig._add_tool_call_to_assistant(
-                            prev_assistant, tool_call_chunk
-                        )
+                            LiteLLMCompletionResponsesConfig._add_tool_call_to_assistant(
+                                prev_assistant, tool_call_chunk
+                            )
         
         # Remove messages with empty tool_call_id that couldn't be fixed
         for idx in reversed(messages_to_remove):
@@ -953,6 +965,19 @@ class LiteLLMCompletionResponsesConfig:
                 }
 
             """
+            # Convert Pydantic object to dict if needed
+            # TOOL_CALLS_CACHE stores ChatCompletionMessageToolCall (Pydantic) objects
+            # but we need dict format to access fields with .get()
+            if not isinstance(_tool_use_definition, dict):
+                # Try model_dump() first (Pydantic v2), fall back to dict() (Pydantic v1)
+                if hasattr(_tool_use_definition, 'model_dump'):
+                    _tool_use_definition = _tool_use_definition.model_dump()
+                elif hasattr(_tool_use_definition, 'dict'):
+                    _tool_use_definition = _tool_use_definition.dict()
+                else:
+                    # If it's not a Pydantic object and not a dict, skip appending tool use definition
+                    return [tool_output_message]
+            
             function: dict = _tool_use_definition.get("function") or {}
             tool_call_chunk = ChatCompletionToolCallChunk(
                 id=_tool_use_definition.get("id") or "",

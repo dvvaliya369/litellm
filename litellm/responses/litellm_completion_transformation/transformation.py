@@ -608,7 +608,8 @@ class LiteLLMCompletionResponsesConfig:
     ) -> ChatCompletionToolCallChunk:
         """Create a ChatCompletionToolCallChunk from tool_use_definition."""
         function_raw = tool_use_definition.get("function")
-        function: Dict[str, Any] = function_raw if isinstance(function_raw, dict) else {}
+        # Support both dict and dict-like objects (e.g., Function objects with .get() method)
+        function: Dict[str, Any] = function_raw if (isinstance(function_raw, dict) or hasattr(function_raw, 'get')) else {}
         tool_use_id_raw = tool_use_definition.get("id")
         tool_use_id: str = (
             str(tool_use_id_raw) if tool_use_id_raw is not None else str(tool_call_id)
@@ -742,7 +743,11 @@ class LiteLLMCompletionResponsesConfig:
                         )
                     
                     if _tool_use_definition:
-                        if not isinstance(_tool_use_definition, dict):
+                        # Convert ChatCompletionMessageToolCall or similar objects to dict-like format
+                        # The _create_tool_call_chunk method expects dict-like access via .get()
+                        # ChatCompletionMessageToolCall has .get() method, so it works as-is
+                        # Only reject objects that don't support dict-like access
+                        if not isinstance(_tool_use_definition, dict) and not hasattr(_tool_use_definition, 'get'):
                             _tool_use_definition = {}
                         tool_call_chunk = (
                             LiteLLMCompletionResponsesConfig._create_tool_call_chunk(
@@ -953,7 +958,9 @@ class LiteLLMCompletionResponsesConfig:
                 }
 
             """
-            function: dict = _tool_use_definition.get("function") or {}
+            function_raw = _tool_use_definition.get("function")
+            # Support both dict and dict-like objects (e.g., Function objects with .get() method)
+            function: dict = function_raw if (function_raw and (isinstance(function_raw, dict) or hasattr(function_raw, 'get'))) else {}
             tool_call_chunk = ChatCompletionToolCallChunk(
                 id=_tool_use_definition.get("id") or "",
                 type=cast(Literal["function"], _tool_use_definition.get("type") or "function"),

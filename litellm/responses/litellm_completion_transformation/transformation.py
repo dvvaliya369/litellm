@@ -742,8 +742,12 @@ class LiteLLMCompletionResponsesConfig:
                         )
                     
                     if _tool_use_definition:
+                        # Convert Pydantic objects (ChatCompletionMessageToolCall) to dict
                         if not isinstance(_tool_use_definition, dict):
-                            _tool_use_definition = {}
+                            if hasattr(_tool_use_definition, "model_dump"):
+                                _tool_use_definition = _tool_use_definition.model_dump()
+                            else:
+                                _tool_use_definition = {}
                         tool_call_chunk = (
                             LiteLLMCompletionResponsesConfig._create_tool_call_chunk(
                                 _tool_use_definition, tool_call_id, len(tool_calls)

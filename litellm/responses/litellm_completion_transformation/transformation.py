@@ -733,25 +733,33 @@ class LiteLLMCompletionResponsesConfig:
                     tool_calls, tool_call_id
                 ):
                     _tool_use_definition = TOOL_CALLS_CACHE.get_cache(key=tool_call_id)
-                    
+
                     if not _tool_use_definition and tools:
                         _tool_use_definition = (
                             LiteLLMCompletionResponsesConfig._reconstruct_tool_call_from_tools(
                                 tool_call_id, tools
                             )
                         )
-                    
+
                     if _tool_use_definition:
+                        # Convert ChatCompletionMessageToolCall (Pydantic model) to dict if needed
                         if not isinstance(_tool_use_definition, dict):
-                            _tool_use_definition = {}
-                        tool_call_chunk = (
-                            LiteLLMCompletionResponsesConfig._create_tool_call_chunk(
-                                _tool_use_definition, tool_call_id, len(tool_calls)
+                            # Try to convert to dict (works for Pydantic models and objects with dict())
+                            try:
+                                _tool_use_definition = dict(_tool_use_definition)
+                            except (TypeError, ValueError):
+                                # If conversion fails, skip this tool_call reconstruction
+                                _tool_use_definition = None
+
+                        if _tool_use_definition:
+                            tool_call_chunk = (
+                                LiteLLMCompletionResponsesConfig._create_tool_call_chunk(
+                                    _tool_use_definition, tool_call_id, len(tool_calls)
+                                )
                             )
-                        )
-                        LiteLLMCompletionResponsesConfig._add_tool_call_to_assistant(
-                            prev_assistant, tool_call_chunk
-                        )
+                            LiteLLMCompletionResponsesConfig._add_tool_call_to_assistant(
+                                prev_assistant, tool_call_chunk
+                            )
         
         # Remove messages with empty tool_call_id that couldn't be fixed
         for idx in reversed(messages_to_remove):

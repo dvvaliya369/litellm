@@ -641,6 +641,31 @@ def test_all_flagged_finish_reasons_in_mapping():
         assert mapping[reason] == "content_filter", f"{reason} should map to 'content_filter'"
 
 
+def test_all_content_filter_mappings_are_flagged():
+    """
+    Test that all finish reasons mapped to 'content_filter' are also 
+    present in the flagged finish reasons (reverse validation).
+    
+    This ensures consistency between get_finish_reason_mapping() and 
+    get_flagged_finish_reasons() to prevent content filter bypass.
+    
+    Edge case: If a finish reason maps to 'content_filter' but is not
+    in flagged reasons, responses with that finish reason will bypass
+    _handle_content_policy_violation() and may return content that
+    should be filtered (especially critical for image generation).
+    """
+    flagged = VertexGeminiConfig().get_flagged_finish_reasons()
+    mapping = VertexGeminiConfig.get_finish_reason_mapping()
+    
+    for reason, mapped_value in mapping.items():
+        if mapped_value == "content_filter":
+            assert reason in flagged, \
+                f"{reason} maps to 'content_filter' but is not in flagged finish reasons. " \
+                f"This can cause content filter bypass where responses are marked as filtered " \
+                f"but content is not properly blocked. This is especially critical for image " \
+                f"generation where LANGUAGE and OTHER finish reasons may occur."
+
+
 def test_finish_reason_unspecified_and_malformed_function_call():
     """
     Test that FINISH_REASON_UNSPECIFIED and MALFORMED_FUNCTION_CALL 

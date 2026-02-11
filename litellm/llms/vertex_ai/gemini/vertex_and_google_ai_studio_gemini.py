@@ -1196,6 +1196,8 @@ class VertexGeminiConfig(VertexAIBaseConfig, BaseConfig):
             "PROHIBITED_CONTENT": "The token generation was stopped as the response was flagged for the prohibited contents.",
             "SPII": "The token generation was stopped as the response was flagged for Sensitive Personally Identifiable Information (SPII) contents.",
             "IMAGE_SAFETY": "The token generation was stopped as the response was flagged for image safety reasons.",
+            "LANGUAGE": "The token generation was stopped as the response was flagged for language-related content policy violations.",
+            "OTHER": "The token generation was stopped for other content filtering reasons, including unexpected safety violations or backend moderation.",
         }
 
     @staticmethod

@@ -91,6 +91,8 @@ def map_finish_reason(
         "PROHIBITED_CONTENT",
         "SPII",
         "IMAGE_SAFETY",
+        "LANGUAGE",
+        "OTHER",
     ):  # vertex ai / gemini
         return "content_filter"
     elif finish_reason == "STOP":  # vertex ai

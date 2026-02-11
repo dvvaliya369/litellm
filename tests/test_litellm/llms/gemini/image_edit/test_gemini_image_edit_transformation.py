@@ -147,6 +147,93 @@ class TestGeminiImageEditTransformation:
                 headers={},
             )
 
+    def test_transform_image_edit_response_image_safety(self) -> None:
+        """Test that IMAGE_SAFETY finishReason raises a content policy violation error"""
+        from litellm.llms.base_llm.chat.transformation import BaseLLMException
+
+        response_payload = {
+            "candidates": [
+                {
+                    "content": {},
+                    "finishReason": "IMAGE_SAFETY",
+                }
+            ],
+        }
+
+        mock_response = MagicMock(spec=httpx.Response)
+        mock_response.json.return_value = response_payload
+        mock_response.status_code = 200
+        mock_response.headers = {}
+
+        with pytest.raises(BaseLLMException) as exc_info:
+            self.config.transform_image_edit_response(
+                model=self.model,
+                raw_response=mock_response,
+                logging_obj=self.logging_obj,
+            )
+        assert "IMAGE_SAFETY" in str(exc_info.value.message)
+        assert "content policy violation" in str(exc_info.value.message).lower()
+
+    def test_transform_image_edit_response_safety_finish_reason(self) -> None:
+        """Test that SAFETY finishReason raises a content policy violation error"""
+        from litellm.llms.base_llm.chat.transformation import BaseLLMException
+
+        response_payload = {
+            "candidates": [
+                {
+                    "content": {},
+                    "finishReason": "SAFETY",
+                }
+            ],
+        }
+
+        mock_response = MagicMock(spec=httpx.Response)
+        mock_response.json.return_value = response_payload
+        mock_response.status_code = 200
+        mock_response.headers = {}
+
+        with pytest.raises(BaseLLMException) as exc_info:
+            self.config.transform_image_edit_response(
+                model=self.model,
+                raw_response=mock_response,
+                logging_obj=self.logging_obj,
+            )
+        assert "SAFETY" in str(exc_info.value.message)
+
+    def test_transform_image_edit_response_stop_finish_reason_ok(self) -> None:
+        """Test that STOP finishReason does NOT raise an error"""
+        response_payload = {
+            "candidates": [
+                {
+                    "content": {
+                        "parts": [
+                            {
+                                "inlineData": {
+                                    "mimeType": "image/png",
+                                    "data": base64.b64encode(b"image-one").decode("utf-8"),
+                                }
+                            }
+                        ]
+                    },
+                    "finishReason": "STOP",
+                }
+            ],
+        }
+
+        mock_response = MagicMock(spec=httpx.Response)
+        mock_response.json.return_value = response_payload
+        mock_response.status_code = 200
+        mock_response.headers = {}
+
+        image_response = self.config.transform_image_edit_response(
+            model=self.model,
+            raw_response=mock_response,
+            logging_obj=self.logging_obj,
+        )
+
+        assert image_response.data is not None
+        assert len(image_response.data) == 1
+
     def test_use_multipart_form_data_returns_false(self) -> None:
         """
         Gemini uses JSON requests, not multipart/form-data.

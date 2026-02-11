@@ -1,6 +1,8 @@
 """Tests for litellm_core_utils.core_helpers module."""
 
-from litellm.litellm_core_utils.core_helpers import reconstruct_model_name
+import pytest
+
+from litellm.litellm_core_utils.core_helpers import map_finish_reason, reconstruct_model_name
 
 
 def test_reconstruct_model_name_prefers_deployment_value():
@@ -43,3 +45,22 @@ def test_reconstruct_model_name_returns_original_for_other_providers():
     )
 
     assert result == "claude-3-sonnet"
+
+
+@pytest.mark.parametrize(
+    "finish_reason",
+    ["SAFETY", "RECITATION", "BLOCKLIST", "PROHIBITED_CONTENT", "SPII", "IMAGE_SAFETY"],
+)
+def test_map_finish_reason_gemini_content_filter(finish_reason):
+    """All Gemini content-filter finish reasons should map to 'content_filter'."""
+    assert map_finish_reason(finish_reason) == "content_filter"
+
+
+def test_map_finish_reason_gemini_stop():
+    """STOP should map to 'stop'."""
+    assert map_finish_reason("STOP") == "stop"
+
+
+def test_map_finish_reason_gemini_max_tokens():
+    """MAX_TOKENS should map to 'length'."""
+    assert map_finish_reason("MAX_TOKENS") == "length"

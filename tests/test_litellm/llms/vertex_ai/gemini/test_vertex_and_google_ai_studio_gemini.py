@@ -606,6 +606,41 @@ def test_check_finish_reason():
         )
 
 
+def test_image_safety_finish_reason():
+    """
+    Test that IMAGE_SAFETY finish reason is properly mapped to 'content_filter'
+    and is included in the flagged finish reasons.
+    """
+    # Verify IMAGE_SAFETY is in the finish reason mapping
+    finish_reason_mappings = VertexGeminiConfig.get_finish_reason_mapping()
+    assert "IMAGE_SAFETY" in finish_reason_mappings
+    assert finish_reason_mappings["IMAGE_SAFETY"] == "content_filter"
+
+    # Verify _check_finish_reason maps it correctly
+    assert (
+        VertexGeminiConfig._check_finish_reason(
+            chat_completion_message=None, finish_reason="IMAGE_SAFETY"
+        )
+        == "content_filter"
+    )
+
+    # Verify IMAGE_SAFETY is in the flagged finish reasons
+    flagged = VertexGeminiConfig().get_flagged_finish_reasons()
+    assert "IMAGE_SAFETY" in flagged
+
+
+def test_all_flagged_finish_reasons_in_mapping():
+    """
+    Test that all flagged finish reasons are also present in the finish reason mapping
+    and map to 'content_filter'.
+    """
+    flagged = VertexGeminiConfig().get_flagged_finish_reasons()
+    mapping = VertexGeminiConfig.get_finish_reason_mapping()
+    for reason in flagged:
+        assert reason in mapping, f"{reason} is flagged but not in finish reason mapping"
+        assert mapping[reason] == "content_filter", f"{reason} should map to 'content_filter'"
+
+
 def test_finish_reason_unspecified_and_malformed_function_call():
     """
     Test that FINISH_REASON_UNSPECIFIED and MALFORMED_FUNCTION_CALL 

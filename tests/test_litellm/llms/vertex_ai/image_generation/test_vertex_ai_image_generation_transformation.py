@@ -272,6 +272,124 @@ class TestVertexAIGeminiImageGenerationConfig:
         assert result.data[0].provider_specific_fields["thought_signature"] == "test_signature_abc123"
 
 
+    def test_transform_image_generation_response_image_safety(self):
+        """Test that IMAGE_SAFETY finishReason raises a content policy violation error"""
+        mock_response = MagicMock(spec=httpx.Response)
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "candidates": [
+                {
+                    "content": {},
+                    "finishReason": "IMAGE_SAFETY",
+                }
+            ],
+            "usageMetadata": {
+                "promptTokenCount": 10,
+                "candidatesTokenCount": 0,
+                "totalTokenCount": 10,
+            },
+        }
+        mock_response.headers = {}
+
+        from litellm.llms.base_llm.chat.transformation import BaseLLMException
+        from litellm.types.utils import ImageResponse
+
+        model_response = ImageResponse()
+        with pytest.raises(BaseLLMException) as exc_info:
+            self.config.transform_image_generation_response(
+                model="gemini-2.5-flash-image",
+                raw_response=mock_response,
+                model_response=model_response,
+                logging_obj=MagicMock(),
+                request_data={},
+                optional_params={},
+                litellm_params={},
+                encoding=None,
+            )
+        assert "IMAGE_SAFETY" in str(exc_info.value.message)
+        assert "content policy violation" in str(exc_info.value.message).lower()
+
+    def test_transform_image_generation_response_safety_finish_reason(self):
+        """Test that SAFETY finishReason raises a content policy violation error"""
+        mock_response = MagicMock(spec=httpx.Response)
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "candidates": [
+                {
+                    "content": {},
+                    "finishReason": "SAFETY",
+                }
+            ],
+            "usageMetadata": {
+                "promptTokenCount": 10,
+                "candidatesTokenCount": 0,
+                "totalTokenCount": 10,
+            },
+        }
+        mock_response.headers = {}
+
+        from litellm.llms.base_llm.chat.transformation import BaseLLMException
+        from litellm.types.utils import ImageResponse
+
+        model_response = ImageResponse()
+        with pytest.raises(BaseLLMException) as exc_info:
+            self.config.transform_image_generation_response(
+                model="gemini-2.5-flash-image",
+                raw_response=mock_response,
+                model_response=model_response,
+                logging_obj=MagicMock(),
+                request_data={},
+                optional_params={},
+                litellm_params={},
+                encoding=None,
+            )
+        assert "SAFETY" in str(exc_info.value.message)
+
+    def test_transform_image_generation_response_stop_finish_reason_ok(self):
+        """Test that STOP finishReason does NOT raise an error"""
+        mock_response = MagicMock(spec=httpx.Response)
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "candidates": [
+                {
+                    "content": {
+                        "parts": [
+                            {
+                                "inlineData": {
+                                    "mimeType": "image/png",
+                                    "data": "base64_encoded_image_data",
+                                }
+                            }
+                        ]
+                    },
+                    "finishReason": "STOP",
+                }
+            ],
+            "usageMetadata": {
+                "promptTokenCount": 10,
+                "candidatesTokenCount": 17,
+                "totalTokenCount": 27,
+            },
+        }
+        mock_response.headers = {}
+
+        from litellm.types.utils import ImageResponse
+
+        model_response = ImageResponse()
+        result = self.config.transform_image_generation_response(
+            model="gemini-2.5-flash-image",
+            raw_response=mock_response,
+            model_response=model_response,
+            logging_obj=MagicMock(),
+            request_data={},
+            optional_params={},
+            litellm_params={},
+            encoding=None,
+        )
+        assert len(result.data) == 1
+        assert result.data[0].b64_json == "base64_encoded_image_data"
+
+
 class TestVertexAIImagenImageGenerationConfig:
     def setup_method(self):
         """Set up test fixtures"""

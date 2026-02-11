@@ -84,7 +84,14 @@ def map_finish_reason(
         return "finish_reason_unspecified"
     elif finish_reason == "MALFORMED_FUNCTION_CALL":
         return "malformed_function_call"
-    elif finish_reason == "SAFETY" or finish_reason == "RECITATION":  # vertex ai
+    elif finish_reason in (
+        "SAFETY",
+        "RECITATION",
+        "BLOCKLIST",
+        "PROHIBITED_CONTENT",
+        "SPII",
+        "IMAGE_SAFETY",
+    ):  # vertex ai / gemini
         return "content_filter"
     elif finish_reason == "STOP":  # vertex ai
         return "stop"

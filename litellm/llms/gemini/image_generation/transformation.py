@@ -5,6 +5,9 @@ import httpx
 from litellm.llms.base_llm.image_generation.transformation import (
     BaseImageGenerationConfig,
 )
+from litellm.llms.vertex_ai.gemini.vertex_and_google_ai_studio_gemini import (
+    VertexGeminiConfig,
+)
 from litellm.secret_managers.main import get_secret_str
 from litellm.types.llms.gemini import GeminiImageGenerationRequest
 from litellm.types.llms.openai import (
@@ -247,6 +250,21 @@ class GoogleImageGenConfig(BaseImageGenerationConfig):
         if "gemini" in model:
             # Gemini Flash Image Preview models return in candidates format
             candidates = response_data.get("candidates", [])
+
+            # Check for content policy violations via finishReason
+            content_policy_violations = (
+                VertexGeminiConfig().get_flagged_finish_reasons()
+            )
+            if candidates and len(candidates) > 0:
+                finish_reason = candidates[0].get("finishReason", "")
+                if finish_reason in content_policy_violations:
+                    error_message = content_policy_violations[finish_reason]
+                    raise self.get_error_class(
+                        error_message=f"Content policy violation: {error_message}. finish_reason: {finish_reason}",
+                        status_code=400,
+                        headers=raw_response.headers,
+                    )
+
             for candidate in candidates:
                 content = candidate.get("content", {})
                 parts = content.get("parts", [])

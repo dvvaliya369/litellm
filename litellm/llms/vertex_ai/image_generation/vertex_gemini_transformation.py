@@ -281,13 +281,36 @@ class VertexAIGeminiImageGenerationConfig(BaseImageGenerationConfig, VertexLLM):
                 status_code=raw_response.status_code,
                 headers=raw_response.headers,
             )
-        
+
         if not model_response.data:
             model_response.data = []
 
         # Gemini image generation models return in candidates format
         candidates = response_data.get("candidates", [])
+
+        # Check for content filter finish reasons
+        finish_reason_mapping = {
+            "SAFETY": "content_filter",
+            "RECITATION": "content_filter",
+            "LANGUAGE": "content_filter",
+            "OTHER": "content_filter",
+            "BLOCKLIST": "content_filter",
+            "PROHIBITED_CONTENT": "content_filter",
+            "SPII": "content_filter",
+            "IMAGE_SAFETY": "content_filter",
+        }
+
         for candidate in candidates:
+            # Check if candidate has a content filter finish reason
+            finish_reason = candidate.get("finishReason")
+            if finish_reason and finish_reason in finish_reason_mapping:
+                # Raise content filter error
+                raise self.get_error_class(
+                    error_message=f"Image generation blocked due to {finish_reason}",
+                    status_code=400,
+                    headers=raw_response.headers,
+                )
+
             content = candidate.get("content", {})
             parts = content.get("parts", [])
             for part in parts:
@@ -304,6 +327,6 @@ class VertexAIGeminiImageGenerationConfig(BaseImageGenerationConfig, VertexLLM):
 
         if usage_metadata := response_data.get("usageMetadata", None):
             model_response.usage = self._transform_image_usage(usage_metadata)
-        
+
         return model_response
 
